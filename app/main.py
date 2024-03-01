@@ -121,8 +121,7 @@ def start(message):
 
 @check_command_or_menu(bot)
 def channel_name(message):
-    if any(bad_word in message.text for bad_word in bad_words if bad_word):
-        print("Bad word triggered:", next((bad_word for bad_word in bad_words if bad_word in message.text), None))
+    if any(bad_word.lower() in message.text.lower() for bad_word in bad_words if bad_word):
         bot.send_message(message.from_user.id, "\U000026D4 В названии есть неприемлемые слова. Отменяем подачу заявки. Если у вас остались вопросы - обратитесь к администратору канала - \U0001F4EE @JohnCrawford7520")
         bot.send_message(message.from_user.id, "\U0000274C Отправка заявки отменена", reply_markup=get_main_keyboard())
     elif not message.text:
@@ -152,7 +151,7 @@ def channel_link(message):
 
 @check_command_or_menu(bot)
 def channel_theme(message):
-    if any(bad_word in message.text for bad_word in bad_words if bad_word):
+    if any(bad_word.lower() in message.text.lower() for bad_word in bad_words if bad_word):
         print("Bad word triggered:", next((bad_word for bad_word in bad_words if bad_word in message.text), None))
         bot.send_message(message.from_user.id, "\U000026D4 В описании есть неприемлемые слова. Отменяем подачу заявки. Если у вас остались вопросы - обратитесь к администратору канала - \U0001F4EE @JohnCrawford7520")
         bot.send_message(message.from_user.id, """\U0000274C Отправка заявки отменена""",
@@ -189,7 +188,7 @@ def channel_members(message):
 
 @check_command_or_menu(bot)
 def channel_description(message):
-    if any(bad_word in message.text for bad_word in bad_words if bad_word):
+    if any(bad_word.lower() in message.text.lower() for bad_word in bad_words if bad_word):
         bot.send_message(message.from_user.id, "\U000026D4 В тексте есть неприемлемые слова. Отменяем подачу заявки. Если у вас остались вопросы - обратитесь к администратору канала - \U0001F4EE @JohnCrawford7520")
         bot.send_message(message.from_user.id, """\U0000274C Отправка заявки отменена""",
                          reply_markup=get_main_keyboard())
@@ -213,7 +212,7 @@ def channel_description(message):
         else:
             contact_text = f"{buf_user.telegram_id}"
         global message_text
-        message_text = f"""<b>\U0001F4C3 Канал: {buf_user.channel_name}:</b>
+        message_text = f"""<b>\U0001F4C3 Канал: {buf_user.channel_name}</b>
     <b> </b>        
     <b>Ссылка на канал:</b> {buf_user.channel_url}
     <b>Количество подписчиков:</b> {buf_user.channel_members}
