@@ -6,10 +6,12 @@ import datetime
 import schedule
 import time
 from telebot import types
+from telebot.apihelper import ApiTelegramException
 from journal import logger
 from functools import wraps
 from utils import Follower
 from threading import Thread
+from requests import exceptions as req_exceptions
 
 log = logger("main")
 # Replace 'YOUR_BOT_TOKEN' with your actual bot token
@@ -58,7 +60,7 @@ def check_command_or_menu(bot):
                     bot.send_message(message.from_user.id, """Отменяю объявление. Возврат в меню""",
                                      reply_markup=get_main_keyboard())
                     bot.send_message(message.from_user.id,
-                                     """"Напиши /start что бы попробовать еще раз""",
+                                     """Напиши /start что бы попробовать еще раз""",
                                      reply_markup=get_main_keyboard())
                 case _:
                     return func(message)
@@ -173,11 +175,11 @@ def channel_theme(message):
 @check_command_or_menu(bot)
 def channel_members(message):
     if not message.text.strip().isdigit():
-        bot.send_message(message.from_user.id, """"Это не число, попробуем еще раз""",
+        bot.send_message(message.from_user.id, """Это не число, попробуем еще раз""",
                          reply_markup=cancel_keyboard())
         bot.register_next_step_handler(message, channel_members)
     elif len(message.text.strip()) > 10:
-        bot.send_message(message.from_user.id, """"Введено более 10 символов. Давай еще раз""",
+        bot.send_message(message.from_user.id, """Введено более 10 символов. Давай еще раз""",
                          reply_markup=cancel_keyboard())
         bot.register_next_step_handler(message, channel_members)
     else:
@@ -213,12 +215,12 @@ def channel_description(message):
             contact_text = f"{buf_user.telegram_id}"
         global message_text
         message_text = f"""<b>\U0001F4C3 Канал: {buf_user.channel_name}</b>
-    <b> </b>        
-    <b>Ссылка на канал:</b> {buf_user.channel_url}
-    <b>Количество подписчиков:</b> {buf_user.channel_members}
-    <b>Тематика:</b> {buf_user.channel_theme}
-    <b>Контакты:</b> {contact_text}
-    {"<b>Описание: </b>" + buf_user.channel_description if buf_user.channel_description else ""}"""
+<b> </b>        
+<b>Ссылка на канал:</b> {buf_user.channel_url}
+<b>Количество подписчиков:</b> {buf_user.channel_members}
+<b>Тематика:</b> {buf_user.channel_theme}
+<b>Контакты:</b> {contact_text}
+{"<b>Описание: </b>" + buf_user.channel_description if buf_user.channel_description else ""}"""
         bot.send_message(message.from_user.id, message_text, reply_markup=markup, parse_mode='HTML')
             # bot.send_message(message.from_user.id,
             #                  """\U0001F53D Нажми кнопку отправки или отмены ниже \U0001F53D""", reply_markup=send_keyboard())
@@ -236,67 +238,45 @@ def callback_query(call):
             users[buf_user.telegram_id] = buf_user
             log.info(users)
             bot.answer_callback_query(call.id, "Объявление отправлено", show_alert=False)
-            bot.send_message(call.from_user.id, """"Отлично! Твое объявление о взаимной рекламе опубликовано на канале [Репост За Репост](https://t.me/RepForRep), зайди и найди партнера для взаимной рекламы Телеграм каналов и обмена аудиторией""",
+            bot.send_message(call.from_user.id, """Отлично! Твое объявление о взаимной рекламе опубликовано на канале [Репост За Репост](https://t.me/RepForRep), зайди и найди партнера для взаимной рекламы Телеграм каналов и обмена аудиторией""",
                              reply_markup=get_main_keyboard())
             bot.send_message(group_id, message_text, parse_mode='HTML')
+            log.info(f"User {users[buf_user.telegram_id].__dict__} posted:")
+            log.info(message_text)
         elif users[buf_user.telegram_id].num < 3:
-            # for key in users.keys():
-            #     if key:
-            #         log.info(users[key].__dict__)
             bot.answer_callback_query(call.id, "Объявление отправлено", show_alert=False)
-            bot.send_message(call.from_user.id, """"Отлично! Твое объявление о взаимной рекламе опубликовано на канале [Репост За Репост] (https://t.me/RepForRep), зайди и найди партнера для взаимной рекламы Телеграм каналов и обмена аудиторией.""",
+            bot.send_message(call.from_user.id, """Отлично! Твое объявление о взаимной рекламе опубликовано на канале [Репост За Репост] (https://t.me/RepForRep), зайди и найди партнера для взаимной рекламы Телеграм каналов и обмена аудиторией.""",
                              reply_markup=get_main_keyboard())
             bot.send_message(group_id, message_text, parse_mode='HTML')
             users[buf_user.telegram_id].num += 1
+            log.info(f"User {users[buf_user.telegram_id].__dict__} posted:")
+            log.info(message_text)
         else:
+            log.info(f"User {users[buf_user.telegram_id].__dict__} cannot post messages")
             bot.answer_callback_query(call.id, "На сегодня лимит объявлений исчерпан (", show_alert=True)
             bot.send_message(call.from_user.id, """Переходим в меню""",
                              reply_markup=get_main_keyboard())
     bot.edit_message_reply_markup(call.from_user.id, call.message.message_id)
 
 
-@check_command_or_menu(bot)
-def send_or_no(message):
-    if message.text == "\U0000274C Отменить объявление":
-        bot.send_message(message.from_user.id, """"Окей, как нибудь в другой раз""",
-                         reply_markup=get_main_keyboard())
-        bot.send_message(message.from_user.id,
-                         """"Напиши /start что бы попробовать еще раз""",
-                         reply_markup=get_main_keyboard())
-    elif message.text == "\U0001F4E3 Отправить объявление":
-        if buf_user.telegram_id not in users.keys():
-            buf_user.num = 1
-            users[buf_user.telegram_id] = buf_user
-            log.info(users)
-            bot.send_message(message.from_user.id, """"Отлично! Твое объявление о взаимной рекламе опубликовано на канале [Репост За Репост](https://t.me/RepForRep), зайди и найди партнера для взаимной рекламы Телеграм каналов и обмена аудиторией.""",
-                             reply_markup=get_main_keyboard())
-            bot.send_message(group_id, message_text, parse_mode='HTML')
-        elif users[buf_user.telegram_id].num < 3:
-            # for key in users.keys():
-            #     if key:
-            #         log.info(users[key].__dict__)
-            bot.send_message(message.from_user.id, """"Отлично! Твое объявление о взаимной рекламе опубликовано на канале [Репост За Репост] (https://t.me/RepForRep), зайди и найди партнера для взаимной рекламы Телеграм каналов и обмена аудиторией.""",
-                             reply_markup=get_main_keyboard())
-            bot.send_message(group_id, message_text, parse_mode='HTML')
-            users[buf_user.telegram_id].num += 1
-        else:
-            bot.send_message(message.from_user.id, """На сегодня лимит объявлений исчерпан (""",
-                             reply_markup=get_main_keyboard())
-    else:
-        bot.send_message(message.from_user.id,
-                         """"Кнопки отправки ниже, выбери из них""", reply_markup=send_keyboard())
-        bot.register_next_step_handler(message, send_or_no)
-
 def fetch_last_message_except_one():
     token = TOKEN
-    response = requests.get(f"https://api.telegram.org/bot{token}/getUpdates")
-    data = response.json()
-    if data["ok"]:
-        if data["result"]:
+    try:
+        response = requests.get(
+            f"https://api.telegram.org/bot{token}/getUpdates",
+            timeout=10
+        )
+        data = response.json()
+        if data.get("ok") and data.get("result"):
             latest_update = data["result"][-1]
             bot.process_new_updates([telebot.types.Update.de_json(latest_update)])
+    except (req_exceptions.ReadTimeout, req_exceptions.ConnectionError) as e:
+        log.warning(f"fetch_last_message_except_one network issue: {e}")
+    except Exception as e:
+        log.error(f"Unable to prefetch last message: {e}")
 
 def clear_users():
+    global users
     log.info("Cleaning users")
     users = {}
     log.info(users)
@@ -309,8 +289,41 @@ def main():
         time.sleep(1)
 
 
+
 if __name__ == "__main__":
     log.info("Starting bot")
     fetch_last_message_except_one()
     Thread(target=main).start()
-    bot.polling(none_stop=True)
+    retry_delay = 5
+    while True:
+        try:
+            bot.infinity_polling(
+                none_stop=True,
+                skip_pending=True,
+                interval=1,
+                timeout=20,
+                long_polling_timeout=20
+            )
+            retry_delay = 5  # reset after clean exit (should not normally happen)
+        except ApiTelegramException as e:
+            if e.error_code == 429:
+                retry_after = e.result_json.get("parameters", {}).get("retry_after", 5)
+                log.warning(f"Hit Telegram rate limit. Sleeping for {retry_after} seconds.")
+                time.sleep(max(retry_after, 1))
+                retry_delay = 5
+            elif 500 <= e.error_code < 600:
+                log.warning(f"Telegram gateway error {e.error_code}. Retry in {retry_delay} seconds.")
+                time.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, 60)
+            else:
+                log.error(f"Unhandled ApiTelegramException: {e}. Retry in {retry_delay} seconds.")
+                time.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, 60)
+        except (req_exceptions.ReadTimeout, req_exceptions.ConnectionError) as e:
+            log.warning(f"Network error while polling: {e}. Retry in {retry_delay} seconds.")
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, 60)
+        except Exception as e:
+            log.error(f"Unexpected polling error: {e}. Retry in {retry_delay} seconds.")
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, 60)
